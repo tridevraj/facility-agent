@@ -1,0 +1,43 @@
+{
+  "categories": {
+    "safety": {"skill": "safety_officer", "weight": 2, "default_cost": 3000,
+      "keywords": ["fire", "smoke", "gas leak", "gas", "extinguisher", "fire alarm", "sparking", "spark", "electric shock", "shock", "hazard", "emergency exit"]},
+    "lift": {"skill": "lift_technician", "default_cost": 4000,
+      "keywords": ["lift", "elevator", "stuck in lift", "lift door"]},
+    "electrical": {"skill": "electrician", "default_cost": 1500,
+      "keywords": ["light", "lights", "bulb", "tube light", "switch", "socket", "power", "electric", "electrical", "wiring", "fuse", "mcb", "tripped", "fan", "short circuit"]},
+    "plumbing": {"skill": "plumber", "default_cost": 1200,
+      "keywords": ["leak", "leaking", "tap", "water", "pipe", "drain", "toilet", "flush", "overflow", "seepage", "tank", "flood", "washroom", "blocked"]},
+    "hvac": {"skill": "hvac_technician", "default_cost": 2500,
+      "keywords": ["ac", "a c", "air conditioner", "air conditioning", "cooling", "hvac", "thermostat", "chiller", "ventilation", "too hot", "too cold"]},
+    "civil": {"skill": "civil_technician", "default_cost": 2000,
+      "keywords": ["wall", "ceiling", "crack", "door", "window", "tile", "paint", "roof", "plaster", "lock", "hinge", "furniture", "desk", "bench"]},
+    "it_network": {"skill": "it_support", "default_cost": 800,
+      "keywords": ["wifi", "wi fi", "internet", "network", "router", "projector", "lan", "printer", "computer", "access point"]},
+    "housekeeping": {"skill": "housekeeping_staff", "default_cost": 300,
+      "keywords": ["clean", "cleaning", "dust", "dusty", "garbage", "dirty", "sweep", "trash", "dustbin", "pest", "cockroach", "mosquito"]},
+    "other": {"skill": "general_technician", "default_cost": 500, "keywords": []}
+  },
+  "priorities": {
+    "critical": {"sla_hours": 2,  "meaning": "Risk to life, safety or major property damage"},
+    "high":     {"sla_hours": 8,  "meaning": "Service is down or blocking normal operations"},
+    "medium":   {"sla_hours": 24, "meaning": "Degraded service, workaround exists"},
+    "low":      {"sla_hours": 72, "meaning": "Cosmetic or non-urgent"}
+  },
+  "priority_keywords": {
+    "critical": ["fire", "smoke", "gas leak", "sparking", "electric shock", "short circuit", "flood", "flooding", "stuck in lift", "trapped", "burning smell"],
+    "high": ["no power", "power outage", "power cut", "no water", "burst", "overflow", "not working at all", "urgent", "exam", "server room", "emergency", "completely down"],
+    "low": ["cosmetic", "paint", "dusty", "minor", "whenever", "not urgent", "scratch", "scratches"]
+  },
+  "approval": {
+    "priorities": ["critical"],
+    "categories": ["safety"],
+    "cost_above": 5000
+  },
+  "escalation": {
+    "level1_after_sla_pct": 100,
+    "level2_after_sla_pct": 150,
+    "level1_notify": "facility.supervisor@example.com",
+    "level2_notify": "facility.manager@example.com"
+  }
+}

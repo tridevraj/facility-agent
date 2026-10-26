@@ -1,0 +1,5 @@
+Flask>=3.0
+SQLAlchemy>=2.0
+anthropic>=0.40        # optional: only needed for the LLM agent
+PyMySQL>=1.1           # optional: only needed if you switch to MySQL
+pytest>=8.0

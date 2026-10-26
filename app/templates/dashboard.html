@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facility Maintenance Operations Agent</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1c2430; --muted:#667085; --line:#e4e7ec; --accent:#1f3864;
+          --crit:#b42318; --high:#b54708; --med:#175cd3; --low:#475467; --ok:#067647; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#10141a; --card:#181e27; --text:#e6e9ee; --muted:#98a2b3;
+          --line:#2a3340; --accent:#7fa6e8; --crit:#f97066; --high:#fdb022; --med:#84adff; --low:#98a2b3; --ok:#47cd89; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:16px 24px; border-bottom:1px solid var(--line); background:var(--card); }
+  h1 { font-size:18px; margin:0; color:var(--accent); } header p { margin:2px 0 0; color:var(--muted); }
+  main { max-width:1200px; margin:0 auto; padding:16px 24px 48px; display:grid; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 10px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+  .kpi b { display:block; font-size:24px; } .kpi span { color:var(--muted); font-size:12px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; } @media (max-width:800px){ .two{grid-template-columns:1fr;} }
+  form { display:grid; gap:8px; } textarea,input,button { font:inherit; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); }
+  textarea { min-height:70px; resize:vertical; } button { cursor:pointer; background:var(--accent); color:var(--bg); border:0; font-weight:600; }
+  button.sec { background:transparent; color:var(--accent); border:1px solid var(--accent); padding:4px 8px; font-weight:500; font-size:12px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .scroll { overflow-x:auto; } table { width:100%; border-collapse:collapse; min-width:820px; }
+  th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--muted); font-weight:600; font-size:12px; }
+  .pill { padding:2px 8px; border-radius:99px; font-size:12px; font-weight:600; border:1px solid currentColor; white-space:nowrap; }
+  .critical{color:var(--crit)} .high{color:var(--high)} .medium{color:var(--med)} .low{color:var(--low)} .ok{color:var(--ok)}
+  .bar { display:flex; align-items:center; gap:8px; margin:3px 0; } .bar i { display:block; height:8px; background:var(--accent); border-radius:4px; }
+  pre { margin:0; white-space:pre-wrap; word-break:break-word; font:12px/1.4 ui-monospace,Menlo,Consolas,monospace; color:var(--muted); }
+  .trace div { padding:4px 0; border-bottom:1px dashed var(--line); } .muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<header><h1>Facility Maintenance Operations Agent</h1><p>Requests in, work orders out. SLAs tracked, urgent work held for approval.</p></header>
+<main>
+  <section class="card"><h2>Overview</h2><div class="kpis" id="kpis"></div></section>
+
+  <div class="two">
+    <section class="card">
+      <h2>New request</h2>
+      <form id="form">
+        <textarea id="text" maxlength="1000" placeholder="e.g. AC not working in Block C, Room 204" required></textarea>
+        <div class="row"><input id="requester" placeholder="Your name" style="flex:1"><input id="location" placeholder="Location (optional)" style="flex:1"></div>
+        <button type="submit">Submit to agent</button>
+      </form>
+      <h2 style="margin-top:14px">What the agent did</h2>
+      <div class="trace" id="trace"><span class="muted">Submit a request to see each tool call.</span></div>
+    </section>
+    <section class="card">
+      <h2>Daily summary</h2><pre id="summary" style="color:var(--text)"></pre>
+      <div class="row" style="margin-top:10px">
+        <button class="sec" id="sla">Run SLA check now</button>
+        <button class="sec" id="sla3">Simulate +3 hours</button>
+        <button class="sec" id="sla12">Simulate +12 hours</button>
+      </div>
+      <h2 style="margin-top:14px">By category</h2><div id="cats"></div>
+      <h2 style="margin-top:14px">Top problem assets and repeat issues</h2><div id="assets"></div>
+    </section>
+  </div>
+
+  <section class="card"><h2>Work orders</h2><div class="scroll"><table>
+    <thead><tr><th>#</th><th>Request</th><th>Location / asset</th><th>Category</th><th>Priority</th><th>Status</th><th>Technician</th><th>Due</th><th>Actions</th></tr></thead>
+    <tbody id="rows"></tbody></table></div></section>
+
+  <section class="card"><h2>Notifications (simulated)</h2><div id="notes" class="muted"></div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => { const n = document.createElement(tag); Object.assign(n, props);
+  kids.flat().forEach(k => n.append(k instanceof Node ? k : document.createTextNode(k ?? ''))); return n; };
+const api = (url, body) => fetch(url, body === undefined ? {} : {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}).then(r => r.json());
+const when = iso => iso ? new Date(iso + 'Z').toLocaleString([], {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+
+function bars(target, data) {
+  target.replaceChildren(); const max = Math.max(1, ...Object.values(data));
+  Object.entries(data).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => target.append(
+    el('div', {className:'bar'}, el('span', {style:'width:110px'}, k), el('i', {style:`width:${Math.round(v/max*160)+4}px`}), String(v))));
+}
+
+async function refresh() {
+  const [d, orders, sum, notes] = await Promise.all([api('/api/dashboard'), api('/api/work-orders'), api('/api/summary/daily'), api('/api/notifications')]);
+  const t = d.totals;
+  $('kpis').replaceChildren(...[['Open',t.open],['Overdue',t.overdue],['Awaiting approval',t.pending_approval],['Escalated',t.escalated],['Completed',t.completed],
+    ['SLA compliance', d.sla_compliance_pct == null ? 'n/a' : d.sla_compliance_pct + '%']].map(([l,v]) => el('div', {className:'kpi'}, el('b', {}, String(v)), el('span', {}, l))));
+  $('summary').textContent = sum.text;
+  bars($('cats'), d.by_category);
+  $('assets').replaceChildren(...d.top_problem_assets.map(a => el('div', {}, `${a.code} (${a.name}): ${a.work_orders}`)),
+    ...d.repeat_issues.map(r => el('div', {className:'high'}, `Repeat: ${r.category} at ${r.location} x${r.count}`)));
+  $('rows').replaceChildren(...orders.map(w => {
+    const act = el('td');
+    const btn = (label, fn) => act.append(el('button', {className:'sec', onclick: async () => { await fn(); refresh(); }}, label), ' ');
+    if (w.status === 'Pending Approval') { btn('Approve', () => api(`/api/work-orders/${w.id}/decision`, {approver:'Supervisor', decision:'approve'}));
+                                           btn('Reject',  () => api(`/api/work-orders/${w.id}/decision`, {approver:'Supervisor', decision:'reject'})); }
+    if (w.status === 'Assigned') btn('Start', () => api(`/api/work-orders/${w.id}/status`, {status:'In Progress'}));
+    if (w.status === 'Assigned' || w.status === 'In Progress') btn('Complete', () => api(`/api/work-orders/${w.id}/status`, {status:'Completed'}));
+    return el('tr', {},
+      el('td', {}, String(w.id)), el('td', {title: w.agent_reasoning || ''}, w.request_text, w.repeat_of ? el('div', {className:'high'}, `Repeat of #${w.repeat_of}`) : ''),
+      el('td', {}, w.location, w.asset_code ? el('div', {className:'muted'}, w.asset_code) : ''),
+      el('td', {}, w.category), el('td', {}, el('span', {className:`pill ${w.priority}`}, w.priority)),
+      el('td', {}, w.status, w.escalation_level ? el('div', {className:'critical'}, `Escalation L${w.escalation_level}`) : ''),
+      el('td', {}, w.technician || '-'), el('td', {className: w.overdue ? 'critical' : ''}, when(w.due_at), w.overdue ? ' (overdue)' : ''), act);
+  }));
+  $('notes').replaceChildren(...(notes.length ? notes.map(n => el('div', {}, `${when(n.created_at)} to ${n.recipient}: ${n.message}`)) : ['None yet.']));
+}
+
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const r = await api('/api/requests', {text:$('text').value, requester:$('requester').value, location:$('location').value});
+  $('trace').replaceChildren(r.ok ? el('div', {className:'ok'}, `${r.agent} agent: ${r.message}`) : el('div', {className:'critical'}, r.error || r.message || 'Failed'),
+    ...(r.trace || []).map(s => el('div', {}, el('b', {}, s.tool), el('pre', {}, JSON.stringify(s.input) + '\n-> ' + (s.output.ok === false ? 'ERROR ' + s.output.error : 'ok')))));
+  if (r.ok) $('text').value = '';
+  refresh();
+});
+const sla = h => async () => { const r = await api('/api/sla/run', {advance_hours:h}); alert(r.escalations.length ? r.escalations.length + ' escalation(s) raised' : 'No new escalations'); refresh(); };
+$('sla').onclick = sla(0); $('sla3').onclick = sla(3); $('sla12').onclick = sla(12);
+refresh(); setInterval(refresh, 30000);
+</script>
+</body>
+</html>
