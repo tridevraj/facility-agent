@@ -1,4 +1,10 @@
 # Facility Maintenance Operations Agent
+## Screenshots
+
+![Tests passing](screenshots/01-tests-passing.png)
+![Dashboard](screenshots/02-dashboard.png)
+![Approval](screenshots/03-approval.png)
+![Escalation](screenshots/04-escalation.png)
 
 An AI agent that turns free-text maintenance requests ("AC not working in Block C, Room 204") into dispatched work orders, then keeps them on track.
 
